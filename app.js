@@ -47,7 +47,7 @@ app.use(passport.initialize())
 app.use(passport.session())
 
 
-//__API__
+//API
 
 //aai
 app.post('/auth/register', register)
