@@ -13,7 +13,10 @@ import {
   createTraining,
   getTrainingById,
   listUserTrainings,
-  updateTraining
+  updateTraining,
+  shareTraining,
+  getSharedTrainings,
+  likeTraining, commentTraining, assignTrainingToUser
 } from "./src/training/controllers/TrainingController.js";
 import { createExercise, listExercises } from "./src/training/controllers/ExerciseController.js";
 
@@ -54,13 +57,20 @@ app.post('/auth/register', register)
 app.post('/auth/login', login);
 
 
-//training
+//Training
 app.post('/training/user/:user/create', createTraining)
 app.get('/training/user/:user/', listUserTrainings)
 app.get('/training/:training', getTrainingById)
 app.put('/training/:training', updateTraining)
 
-//exercise
+//Community
+app.post('/community/:training/share', shareTraining)
+app.get('/community/trainings', getSharedTrainings)
+app.put('/community/:training/like', likeTraining)
+app.put('/community/:training/user/:user/comment', commentTraining)
+app.post('/community/:training/user/:user/assign', assignTrainingToUser)
+
+//Exercise
 app.post('/exercise/user/:user/create', createExercise)
 app.get('/exercise', listExercises)
 
