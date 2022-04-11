@@ -16,7 +16,7 @@ import {
   updateTraining,
   shareTraining,
   getSharedTrainings,
-  likeTraining, commentTraining, assignTrainingToUser
+  likeTraining, commentTraining, assignTrainingToUser, dislikeTraining
 } from "./src/training/controllers/TrainingController.js";
 import { createExercise, listExercises } from "./src/training/controllers/ExerciseController.js";
 
@@ -49,10 +49,7 @@ app.use(session({
 app.use(passport.initialize())
 app.use(passport.session())
 
-
-//API
-
-//aai
+//Auth
 app.post('/auth/register', register)
 app.post('/auth/login', login);
 
@@ -66,7 +63,8 @@ app.put('/training/:training', updateTraining)
 //Community
 app.post('/community/:training/share', shareTraining)
 app.get('/community/trainings', getSharedTrainings)
-app.put('/community/:training/like', likeTraining)
+app.put('/community/:training/user/:user/like', likeTraining)
+app.put('/community/:training/user/:user/dislike', dislikeTraining)
 app.put('/community/:training/user/:user/comment', commentTraining)
 app.post('/community/:training/user/:user/assign', assignTrainingToUser)
 

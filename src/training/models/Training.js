@@ -24,6 +24,9 @@ export const TrainingSchema = new mongoose.Schema({
       sets: [ ExerciseSetSchema ],
     }
   ],
+  parent: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now

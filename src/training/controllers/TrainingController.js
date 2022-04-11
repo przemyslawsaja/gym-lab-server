@@ -47,6 +47,7 @@ export const listUserTrainings = async (req, res) => {
       return {
         id: training.id,
         name: training.name,
+        parent: training.parent,
         duration: training.duration,
         break: training.break,
         exercises: training.exercises,
@@ -131,19 +132,24 @@ export const updateTraining = async (req, res) => {
 
 export const shareTraining = async (req, res) => {
   const trainingId = req.params.training
-  const trainingExists = await Training.findOne({ _id: trainingId }).select("_id").lean();
-
-  if (!trainingExists) {
+  const training = await Training.findOne({ _id: trainingId });
+  const isShared = await SharedTraining.findOne({training: trainingId})
+  if (!training) {
     return res.status(404).json({ message: 'Training does not exist' })
+  }
+
+  if(isShared){
+    return res.status(404).json({ message: 'Trening został już udostępniony' })
   }
 
   try {
     await SharedTraining.create({
       training: trainingId,
       comments: [],
-      likes: 0,
+      likes: [],
+      description: req.body.description,
     })
-    return res.status(200).json({ message: "Training shared successfully" })
+    return res.status(200).json({ message: "success" })
   } catch (err) {
     res.status(404).json({ message: err.message })
   }
@@ -152,18 +158,39 @@ export const shareTraining = async (req, res) => {
 export const getSharedTrainings = async (req, res) => {
   const sharedTrainings = await SharedTraining.find()
 
-  const extendedSharedTrainings =  await Promise.all( sharedTrainings.map(async (sharedTraining) => {
-    const training =  await Training.findOne({ _id: sharedTraining.training })
+  const extendedSharedTrainings = await Promise.all(sharedTrainings.map(async (sharedTraining) => {
+    const comments = await Promise.all(
+      sharedTraining.comments.map(async (comment) => {
+
+        const user = await User.findOne(( { _id: comment.user } ))
+        return {
+          content: comment.content,
+          user: user.username,
+        }
+      })
+    )
+
+    const training = await Training.findOne({ _id: sharedTraining.training })
+    const user = await User.findOne(( { _id: training.user } ))
     return {
       _id: sharedTraining._id,
-      training: training,
+      training: {
+        break: training.break,
+        duration: training.duration,
+        exercises: training.exercises,
+        name: training.name,
+        id: training._id
+      },
       likes: sharedTraining.likes,
-      comments: sharedTraining.comments,
+      author: user.username,
+      description: sharedTraining.description,
+      comments: comments,
+      createdAt: sharedTraining.createdAt,
     }
   }))
 
   try {
-    return res.status(200).json(extendedSharedTrainings)
+    return res.status(200).json(extendedSharedTrainings.reverse())
   } catch (err) {
     res.status(404).json({ message: err.message })
   }
@@ -171,12 +198,47 @@ export const getSharedTrainings = async (req, res) => {
 
 export const likeTraining = async (req, res) => {
   const trainingId = req.params.training
+  const userId = req.params.user
   const training = await SharedTraining.findOne({ training: trainingId })
+  const user = await User.findOne({ _id: userId })
+
+  if (!training) {
+    res.status(404).json({ message: "Training not found" })
+  }
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" })
+  }
+
   try {
     await SharedTraining.findOneAndUpdate({ training: trainingId }, {
-      likes: training.likes + 1
+      likes: [ userId, ...training.likes ]
     })
-    return res.status(200).json(this)
+    return res.status(200).json({ message: "Training liked" })
+  } catch (err) {
+    res.status(404).json({ message: err.message })
+  }
+}
+
+export const dislikeTraining = async (req, res) => {
+  const trainingId = req.params.training
+  const userId = req.params.user
+  const training = await SharedTraining.findOne({ training: trainingId })
+  const user = await User.findOne({ _id: userId })
+
+  if (!training) {
+    res.status(404).json({ message: "Training not found" })
+  }
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" })
+  }
+
+  try {
+    await SharedTraining.findOneAndUpdate({ training: trainingId }, {
+      likes: training.likes.filter(userId => userId !== user.id)
+    })
+    return res.status(200).json({ message: "Training unliked" })
   } catch (err) {
     res.status(404).json({ message: err.message })
   }
@@ -188,24 +250,29 @@ export const commentTraining = async (req, res) => {
   const comment = req.body;
   const training = await SharedTraining.findOne({ training: trainingId })
 
+  if (!training) {
+    res.status(404).json({ message: "Training does not exists" })
+  }
+
   try {
     await SharedTraining.findOneAndUpdate({ training: trainingId }, {
       comments: [ {
         user: userId,
         content: comment.content
-      }, ...training.comments]
+      }, ...training.comments ]
     })
-    return res.status(200).json(this)
+    return res.status(200).json({ message: 'Comment added' })
   } catch (err) {
     res.status(404).json({ message: err.message })
   }
 }
 
 export const assignTrainingToUser = async (req, res) => {
-  const trainingId =  req.params.training
+  const trainingId = req.params.training
   const userId = req.params.user
   const user = await User.findOne({ _id: userId }).select("_id").lean();
   const training = await Training.findOne({ _id: trainingId })
+
   if (!user) {
     return res.status(404).json({ message: 'User does not exist' })
   }
@@ -214,7 +281,7 @@ export const assignTrainingToUser = async (req, res) => {
     return res.status(404).json({ message: 'Training does not exist' })
   }
 
-  const userTrainings = await Training.find({  user: userId })
+  const userTrainings = await Training.find({ user: userId })
   const hasAssignedTraining = userTrainings.some(userTraining => userTraining.name === training.name)
 
   if (hasAssignedTraining) {
@@ -224,6 +291,7 @@ export const assignTrainingToUser = async (req, res) => {
   try {
     await Training.create({
       user: userId,
+      parent: trainingId,
       name: training.name,
       duration: training.duration,
       break: training.break,
