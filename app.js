@@ -16,7 +16,7 @@ import {
   updateTraining,
   shareTraining,
   getSharedTrainings,
-  likeTraining, commentTraining, assignTrainingToUser, dislikeTraining
+  likeTraining, commentTraining, assignTrainingToUser, dislikeTraining, createHistoryTraining, listUserHistoryTrainings
 } from "./src/training/controllers/TrainingController.js";
 import { createExercise, listExercises } from "./src/training/controllers/ExerciseController.js";
 
@@ -59,6 +59,10 @@ app.post('/training/user/:user/create', createTraining)
 app.get('/training/user/:user/', listUserTrainings)
 app.get('/training/:training', getTrainingById)
 app.put('/training/:training', updateTraining)
+
+//History
+app.post('/history/user/:user/create', createHistoryTraining)
+app.get('/history/user/:user', listUserHistoryTrainings)
 
 //Community
 app.post('/community/:training/share', shareTraining)

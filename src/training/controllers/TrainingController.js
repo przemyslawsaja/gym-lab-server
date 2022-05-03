@@ -2,6 +2,7 @@ import Training from "../models/Training.js";
 import User from '../../aai/models/User.js';
 import Exercise from "../models/Exercise.js";
 import SharedTraining from "../models/sharedTraining.js";
+import HistoryTraining from "../models/HistoryTraining.js";
 
 export const createTraining = async (req, res) => {
   const training = req.body;
@@ -133,12 +134,12 @@ export const updateTraining = async (req, res) => {
 export const shareTraining = async (req, res) => {
   const trainingId = req.params.training
   const training = await Training.findOne({ _id: trainingId });
-  const isShared = await SharedTraining.findOne({training: trainingId})
+  const isShared = await SharedTraining.findOne({ training: trainingId })
   if (!training) {
     return res.status(404).json({ message: 'Training does not exist' })
   }
 
-  if(isShared){
+  if (isShared) {
     return res.status(404).json({ message: 'Trening został już udostępniony' })
   }
 
@@ -299,6 +300,49 @@ export const assignTrainingToUser = async (req, res) => {
         return {
           sets: exercise.sets,
           _id: exercise.id
+        }
+      })
+    })
+    return res.status(200).json({ message: req.body })
+  } catch (err) {
+    res.status(404).json({ message: err.message })
+  }
+}
+
+export const listUserHistoryTrainings = async (req, res) => {
+  const user = req.params.user;
+
+  try {
+    const existingUser = await User.find({ user })
+
+    if (!existingUser) {
+      return res.status(400).json({ message: 'Nie znaleziono uzytkownika' })
+    }
+    const trainings = await HistoryTraining.find({ user })
+
+    return res.status(200).json({ trainings: trainings })
+
+  } catch (err) {
+    res.status(404).json({ message: err.message })
+  }
+}
+
+export const createHistoryTraining = async (req, res) => {
+  const training = req.body;
+  const userId = req.params.user
+  const user = await User.findOne({ _id: userId }).select("_id").lean();
+
+  if (!user) {
+    return res.status(404).json({ message: 'User does not exist' })
+  }
+
+  try {
+    await HistoryTraining.create({
+      user: userId,
+      exercises: training.exercises.map(exercise => {
+        return {
+          sets: exercise.sets,
+          label: exercise.label
         }
       })
     })
